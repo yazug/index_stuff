@@ -28,6 +28,69 @@ def md5file(filename):
     fh.close()
     return digest.hexdigest()
 
+extention_type_list = [
+        ('.avi','video'),
+        ('.c','code'),
+        ('.cpp','code'),
+        ('.css','css'),
+        ('.dll','dll'),
+        ('.doc','doc'),
+        ('.docx','docx'),
+        ('.exe','exe'),
+        ('.gif','gif'),
+        ('.h','code'),
+        ('.htm','html'),
+        ('.html','html'),
+        ('.java','code'),
+        ('.jpg','jpg'),
+        ('.js','js'),
+        ('.mp3','mp3'),
+        ('.pdf','pdf'),
+        ('.pl','code'),
+        ('.png','png'),
+        ('.png.gz','png'),
+        ('.ps','ps'),
+        ('.py','code'),
+        ('.sh','sh'),
+        ('.tar.bz2','tbz2'),
+        ('.tar.gz','tgz'),
+        ('.tbz2','tbz2'),
+        ('.tgz','tgz'),
+        ('.tif','tif'),
+        ('.tiff','tif'),
+        ('.txt','txt'),
+        ('.xls','xls'),
+        ('.xml','xml'),
+        ('.zip','zip'),
+        ]
+
+def index_file(path,name,con):
+    filename = os.path.join(path,name)
+
+    if os.path.isfile(filename) :
+        size = os.path.getsize(filename)
+        last_modified = os.path.getmtime(filename)
+        created = os.path.getctime(filename)
+        file_type = ""
+        if size == 0:
+            file_type = "empty"
+        else:
+            for exten, exten_type in extention_type_list:
+                if exten in name:
+                    file_type = exten_type
+
+        md5sum = md5file(filename)
+
+        sql = ("insert into file_list (path,filename,md5sum,size,mdate,cdate,type) values " +
+            "(\"%s\", \"%s\", '%s', %d, %d, %d, '%s')")%(dirname, file, md5sum,size,last_modified,created,file_type)
+
+        try:
+            arg.execute(sql)
+        except:
+            print "Failed on the following:"
+            print (path, name, md5sum, size, last_modified, created)
+            print sql
+
 def walkfunc(arg, dirname, names):
     check_again = True
 
@@ -81,36 +144,35 @@ def walkfunc(arg, dirname, names):
             print "Failed to try to cleanup [%s] with sql [%s]"%(dirname,sql)
 
         for file in names:
-            filename = os.path.join(dirname,file)
-            if os.path.isfile(filename) :
-                size = os.path.getsize(filename)
-                last_modified = os.path.getmtime(filename)
-                created = os.path.getctime(filename)
-
-                md5sum = md5file(filename)
-
-                sql = ("insert into file_list (path,filename,md5sum,size,mdate,cdate) values " +
-                    "(\"%s\", \"%s\", '%s', %d, %d, %d)")%(dirname, file, md5sum,size,last_modified,created)
-                #print sql
-                try:
-                    arg.execute(sql)
-                except:
-                    print "Failed on the following:"
-                    print (dirname, file, md5sum, size, last_modified, created)
-                    print sql
-
+            index_file(dirname,file,arg)
 
         arg.commit()
 
+
     print ""
 
+
 if True:
-    os.path.walk("/media/DROBO/stuff",walkfunc,con)
-    os.path.walk("/media/DROBO/jon_music",walkfunc,con)
-    os.path.walk("/media/DROBO/jon_music_2",walkfunc,con)
-    os.path.walk("/media/DROBO/linux-laptop-archive",walkfunc,con)
-    os.path.walk("/media/DROBO/quark",walkfunc,con)
-    os.path.walk("/media/DROBO/quark_backup_20100121",walkfunc,con)
+    #os.path.walk("/media/DROBO/stuff",walkfunc,con)
+    #os.path.walk("/media/DROBO/jon_music",walkfunc,con)
+    #os.path.walk("/media/DROBO/jon_music_2",walkfunc,con)
+    os.path.walk("/media/DROBO/AudioBooks",walkfunc,con)
+    #os.path.walk("/media/DROBO/incoming/Music",walkfunc,con)
+    #os.path.walk("/media/DROBO/incoming/EveOnline",walkfunc,con)
+    #os.path.walk("/media/DROBO/incoming/downloads",walkfunc,con)
+    #os.path.walk("/media/DROBO/incoming/Dropbox",walkfunc,con)
+    #os.path.walk("/media/DROBO/incoming/eBooks",walkfunc,con)
+    #os.path.walk("/media/DROBO/linux-laptop-archive",walkfunc,con)
+    #os.path.walk("/media/DROBO/linux-laptop-archive/",walkfunc,con)
+    #os.path.walk("/media/DROBO/quark_backup_20100121/jon_music/",walkfunc,con)
+    #os.path.walk("/media/DROBO/quark_backup_20100121/music",walkfunc,con)
+    #os.path.walk("/media/DROBO/music",walkfunc,con)
+    #os.path.walk("/media/DROBO/incoming/deadmau5",walkfunc,con)
+    #os.path.walk("/media/DROBO/incoming/thumb-dumps/8gb_drive/music",walkfunc,con)
+    #os.path.walk("/media/DROBO/incoming/yazug-black/jon_music/misc2",walkfunc,con)
+    #os.path.walk("",walkfunc,con)
+    #os.path.walk("/media/DROBO/quark",walkfunc,con)
+    #os.path.walk("/media/DROBO/quark_backup_20100121",walkfunc,con)
 
 if False:
     #os.path.walk("/media/DROBO/music",walkfunc,con)
@@ -165,5 +227,23 @@ if False:
     os.path.walk("/media/DROBO/zip_disks",walkfunc,con)
 
 
+if False:
+    print "updating types"
+    con.execute('update file_list set type = "empty" where size = 0 and type is null')
+    con.commit()
+
+if False:
+    for exten, exten_type in extention_type_list:
+        count_cursor = con.execute('select count(filename) from file_list where type = "'+exten_type+'"')
+        before_count = count_cursor.fetchall()[0]
+
+        print 'update file_list set type = "'+exten_type+'" where type is null and filename like "%'+exten+'"'
+        con.execute('update file_list set type = "'+exten_type+'" where type is null and filename like "%.'+exten+'"')
+        con.commit()
+        count_cursor = con.execute('select count(filename) from file_list where type = "'+exten_type+'"')
+        count = count_cursor.fetchall()[0]
+        print "finished updating %s to %s for a total of %s from %s"%(exten,exten_type,count[0],before_count[0])
+
+    print "Finished updating types"
 
 con.close()
