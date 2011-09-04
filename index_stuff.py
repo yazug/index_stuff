@@ -49,11 +49,11 @@ def walkfunc(arg, dirname, names):
             if os.path.isfile(filename):
                 if name not in names:
                     check_again = True;
-                    print "File not there anymore [%s]",name
+                    print "File not there anymore [%s]"%name
 
                 name_list.append(name)
             else:
-                print "Folder here.... [%s]",name
+                print "Folder here.... [%s]"%name
 
 
         if len(db_list) == len(name_list):
