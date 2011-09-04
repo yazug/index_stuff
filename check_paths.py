@@ -9,7 +9,7 @@ import sys,os
 
 con = sqlite3.connect('index_stuff.db')
 
-cursor = con.execute('SELECT distinct path from file_list where type = "mp3"')
+cursor = con.execute('SELECT distinct path from file_list where type is not null and type <> "empty"')
 
 for (path) in cursor:
     if not os.path.isdir(path[0]):
