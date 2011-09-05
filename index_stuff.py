@@ -81,11 +81,12 @@ def index_file(path,name,con):
 
         md5sum = md5file(filename)
 
-        sql = ("insert into file_list (path,filename,md5sum,size,mdate,cdate,type) values " +
-            "(\"%s\", \"%s\", '%s', %d, %d, %d, '%s')")%(dirname, file, md5sum,size,last_modified,created,file_type)
+        sql = ("insert or replace into file_list (path,filename,md5sum,size,mdate,cdate,type) values " +
+            "(\"%s\", \"%s\", '%s', %d, %d, %d, '%s')")%(path, name, md5sum,size,last_modified,created,file_type)
 
         try:
-            arg.execute(sql)
+            con.execute(sql)
+            con.commit()
         except:
             print "Failed on the following:"
             print (path, name, md5sum, size, last_modified, created)
@@ -94,9 +95,9 @@ def index_file(path,name,con):
 def walkfunc(arg, dirname, names):
     check_again = True
 
-    print "Walk here ",arg,dirname,names
+    #print "Walk here ",arg,dirname,names
 
-    sql_find = ("select * from file_list where path = \"%s\"")%(dirname)
+    sql_find = ("select * from file_list where path = \"%s\"")%(dirname.encode('utf-8'))
     check_again = False
 
     try:
@@ -108,15 +109,16 @@ def walkfunc(arg, dirname, names):
         for record in db_list:
             path = record[0]
             name = record[1]
-            filename = os.path.join(dirname,name)
-            if os.path.isfile(filename):
-                if name not in names:
-                    check_again = True;
-                    print "File not there anymore [%s]"%name
+            filename = os.path.join(dirname.encode('utf-8'),name.encode('utf-8'))
 
-                name_list.append(name)
+            if os.path.isfile(filename):
+                if name.encode('utf-8') not in names:
+                    check_again = True;
+                    print "File not there anymore [%s]"%name.encode('utf-8')
+
+                name_list.append(name.encode('utf-8'))
             else:
-                print "Folder here.... [%s]"%name
+                print "Folder here.... [%s]"%name.encode('utf-8')
 
 
         if len(db_list) == len(name_list):
@@ -128,31 +130,88 @@ def walkfunc(arg, dirname, names):
             print "Reindex needed for [%s]"%(dirname)
             print "Got [db:%d] vs [fs:%d] records"%(len(db_list),len(name_list))
         else:
-            print "Same Nothing to do [%s]"%(dirname)
+            print "Same Nothing to do [%s]"%(dirname.encode('utf-8'))
 
-    except:
-        print "Failed on the following:"
+    except Exception as inst:
+        print "Failed on the following exception [%s]:"%(inst)
         print sql_find
 
 
 
     if check_again:
-        sql = "delete from file_list where path = \"%s\""%dirname
+        sql = "delete from file_list where path = \"%s\""%dirname.encode('utf-8')
         try:
             arg.execute(sql)
         except:
-            print "Failed to try to cleanup [%s] with sql [%s]"%(dirname,sql)
+            print "Failed to try to cleanup [%s] with sql [%s]"%(dirname.encode('utf-8'),sql)
 
         for file in names:
-            index_file(dirname,file,arg)
+            index_file(dirname.encode('utf-8'),file.encode('utf-8'),arg)
 
         arg.commit()
 
 
     print ""
 
+def walkfunc_folders_only(arg, dirname, names):
+    folder_list = []
+    file_list = []
+    for name in names:
+        filename = os.path.join(dirname,name)
+        if os.path.isdir(filename):
+            folder_list.append(name)
+        if os.path.isfile(filename):
+            file_list.append(name)
+
+    sql_dir_limit = "select * from folder_list where path='%s'"%(dirname.encode('utf-8'))
+    #print "Directory Limiting sql[%s]"%sql_dir_limit
+    #print folder_list
+    print "Walk [%s]"%dirname
+
+    folder_count = len(folder_list)
+    file_count = len(file_list)
+
+    last_modified = os.path.getmtime(dirname)
+    created = os.path.getctime(dirname)
+
+    path,name = os.path.split(dirname)
+    #print "(path, name, Folder Count, file count, cdate, mdate)"
+    #print "(\"%s\",\"%s\",%d,%d,%d,%d)"%(path.encode('utf-8'),name.encode('utf-8'),folder_count,file_count,0,0)
+
+    sql = "insert or replace into folder_list (path,foldername,folder_count,file_count,cdate,mdate) values (\"%s\",\"%s\",%d,%d,%d,%d)"%(path.encode('utf-8'),name.encode('utf-8'),folder_count,file_count,last_modified,created)
+
+    #print sql
+
+    walkfunc(arg,dirname,names);
+    arg.execute(sql)
+    arg.commit()
 
 if True:
+    #os.path.walk("/media/DROBO/AudioBooks",walkfunc_folders_only,con)
+    #os.path.walk("/media/DROBO/jon_music_2",walkfunc_folders_only,con)
+    #os.path.walk("/media/DROBO/jon_music",walkfunc_folders_only,con)
+    #os.path.walk("/media/DROBO/stuff",walkfunc_folders_only,con)
+    #os.path.walk("/media/DROBO/incoming/eBooks",walkfunc_folders_only,con)
+    #os.path.walk("/media/DROBO/corinne-backups",walkfunc_folders_only,con)
+    #os.path.walk("/media/DROBO/music",walkfunc_folders_only,con)
+    #os.path.walk("/media/DROBO/podcasts",walkfunc_folders_only,con)
+    #os.path.walk("/media/DROBO/personal",walkfunc_folders_only,con)
+    #os.path.walk("/media/DROBO/other",walkfunc_folders_only,con)
+    #os.path.walk("/media/DROBO/reef-stuff",walkfunc_folders_only,con)
+    #os.path.walk("/media/DROBO/games",walkfunc_folders_only,con)
+    #os.path.walk("/media/DROBO/backup-thumb",walkfunc_folders_only,con)
+    #os.path.walk("/media/DROBO/carputer",walkfunc_folders_only,con)
+    #os.path.walk("/media/DROBO/all_pictures",walkfunc_folders_only,con)
+    #os.path.walk("/media/DROBO/7-13-08",walkfunc_folders_only,con)
+    #os.path.walk("/media/DROBO/backup-tools",walkfunc_folders_only,con)
+    #os.path.walk("/media/DROBO/ebook",walkfunc_folders_only,con)
+    #os.path.walk("/media/DROBO/ebooks",walkfunc_folders_only,con)
+    #os.path.walk("/media/DROBO/iso",walkfunc_folders_only,con)
+    #os.path.walk("/media/DROBO/install",walkfunc_folders_only,con)
+    #os.path.walk("/media/DROBO/linux-laptop-archive",walkfunc_folders_only,con)
+    os.path.walk("/media/DROBO",walkfunc_folders_only,con)
+
+if False:
     #os.path.walk("/media/DROBO/stuff",walkfunc,con)
     #os.path.walk("/media/DROBO/jon_music",walkfunc,con)
     #os.path.walk("/media/DROBO/jon_music_2",walkfunc,con)

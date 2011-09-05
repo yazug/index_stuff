@@ -15,8 +15,7 @@ con.execute(sql)
 
 con.execute("create index if not exists index_file_list_type on file_list (type);")
 con.execute("create index if not exists index_file_list_path on file_list (path);")
-
-
+con execute("CREATE TABLE folder_list(path TEXT, foldername TEXT, folder_count integer, file_count integer, mdate INTEGER, cdate INTEGER, last_checked DATE);")
 
 
 
