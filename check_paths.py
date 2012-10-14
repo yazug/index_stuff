@@ -3,17 +3,27 @@
 #
 # Jon Schlueter <jon.schlueter@gmail.com>
 #
+# Look through the database and remove deleted directories
 
+import os
 import sqlite3
-import sys,os
+import sys
 
-con = sqlite3.connect('index_stuff.db')
+db_filename = 'index_stuff.db'
 
-cursor = con.execute('SELECT distinct path from file_list where type is not null and type <> "empty"')
+con = sqlite3.connect(db_filename)
 
-for (path) in cursor:
-    if not os.path.isdir(path[0]):
-        print "[%s] is missing removing entries"%path[0]
-        con.execute( 'delete from file_list where path = "'+path[0]+'"')
-        con.commit()
+delete_limit = 10
+if con:
+
+    cursor = con.execute('SELECT DISTINCT path FROM file_list WHERE type IS NOT NULL AND type <> "empty"')
+
+    for (path) in cursor:
+        if not os.path.isdir(path[0]) and delete_limit > 0:
+            print "[%s] is missing removing entries"%path[0]
+            con.execute( 'delete from file_list where path = "'+path[0]+'"')
+            con.commit()
+            delete_limit = delete_limit - 1
+
+    con.close()
 
