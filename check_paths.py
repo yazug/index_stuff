@@ -16,14 +16,26 @@ con = sqlite3.connect(db_filename)
 delete_limit = 10
 if con:
 
-    cursor = con.execute('SELECT DISTINCT path FROM file_list WHERE type IS NOT NULL AND type <> "empty"')
+    con.execute('INSERT OR IGNORE INTO folder_list (path) SELECT DISTINCT path from file_list')
+    cursor = con.execute('SELECT path,foldername FROM folder_list')
 
-    for (path) in cursor:
-        if not os.path.isdir(path[0]) and delete_limit > 0:
-            print "[%s] is missing removing entries"%path[0]
-            con.execute( 'delete from file_list where path = "'+path[0]+'"')
+    for (path, foldername) in cursor:
+        if not os.path.isdir(path) and delete_limit > 0:
+            print "[%s] is missing removing entries"%(path.encode('utf-8'),)
+            con.execute( 'delete from file_list where path = "'+path.encode('utf-8')+'"')
+            con.execute( 'delete from folder_list where path = "'+path.encode('utf-8')+'"')
             con.commit()
             delete_limit = delete_limit - 1
+
+        if not os.path.basename(path) == foldername:
+            print "Mismatch of path and foldername [%s] [%s]"%(path, foldername,)
+            con.execute( 'delete from file_list where path = "'+path.encode('utf-8')+'"')
+            con.execute( 'delete from folder_list where path = "'+path.encode('utf-8')+'"')
+            con.commit()
+            delete_limit = delete_limit - 1
+
+        if delete_limit == 0:
+            break;
 
     con.close()
 

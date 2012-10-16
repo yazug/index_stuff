@@ -13,8 +13,9 @@ import sys,os
 import sqlite3
 import hashlib
 
-con = sqlite3.connect("index_stuff.db")
+db_filename = 'index_stuff.db'
 
+con = sqlite3.connect(db_filename)
 
 def md5file(filename):
     """Return the hex digest of a file without loading it all into memory"""
@@ -100,6 +101,32 @@ def walkfunc(arg, dirname, names):
     sql_find = ("select * from file_list where path = \"%s\"")%(dirname.encode('utf-8'))
     check_again = False
 
+    dir_count = 0
+    file_count = 0
+
+    for name in names:
+        filename = os.path.join(dirname.encode('utf-8'),name.encode('utf-8')).encode('utf-8')
+        if os.path.isfile(filename):
+            file_count += 1
+
+        if os.path.isdir(filename):
+            dir_count += 1
+
+    print "Got %d folders and %d files"%(dir_count,file_count)
+    cursor = arg.execute('select path,folder_count,file_count from folder_list where path = \"%s\"'%(dirname.encode('utf-8'),))
+    check_again = True
+    for row in cursor:
+        print row
+        print "Folder Record [%s] has %s folders and %s files"%(row[0], row[1], row[2])
+        if row[1] is None:
+            check_again = True
+        elif row[2] is None:
+            check_again = True
+        elif row[2] != file_count and row[1] != folder_count:
+            check_again = True
+        else:
+            check_again = False
+
     try:
         con = arg.execute(sql_find)
 
@@ -124,13 +151,13 @@ def walkfunc(arg, dirname, names):
         if len(db_list) == len(name_list):
             pass
         else:
-            check_again = True;
+            check_again = True
 
         if check_again:
             print "Reindex needed for [%s]"%(dirname)
             print "Got [db:%d] vs [fs:%d] records"%(len(db_list),len(name_list))
         else:
-            print "Same Nothing to do [%s]"%(dirname.encode('utf-8'))
+            print "Same Nothing to do [%s]"%(dirname.encode('utf-8'),)
 
     except Exception as inst:
         print "Failed on the following exception [%s]:"%(inst)
@@ -148,6 +175,10 @@ def walkfunc(arg, dirname, names):
         for file in names:
             index_file(dirname.encode('utf-8'),file.encode('utf-8'),arg)
 
+        sql = "INSERT OR REPLACE INTO folder_list (path, foldername, folder_count, file_count, cdate,mdate,last_checked) values ('%s','%s',%d, %s, %s,%s,%s)"
+        params = (dirname.encode('utf-8'), os.path.basename(dirname).encode('utf-8'),dir_count,file_count,os.path.getctime(dirname),os.path.getmtime(dirname),'2012-10-15',)
+        print sql%params
+        arg.execute(sql%params)
         arg.commit()
 
 
@@ -178,13 +209,13 @@ def walkfunc_folders_only(arg, dirname, names):
     #print "(path, name, Folder Count, file count, cdate, mdate)"
     #print "(\"%s\",\"%s\",%d,%d,%d,%d)"%(path.encode('utf-8'),name.encode('utf-8'),folder_count,file_count,0,0)
 
-    sql = "insert or replace into folder_list (path,foldername,folder_count,file_count,cdate,mdate) values (\"%s\",\"%s\",%d,%d,%d,%d)"%(path.encode('utf-8'),name.encode('utf-8'),folder_count,file_count,last_modified,created)
+    #sql = "insert or replace into folder_list (path,foldername,folder_count,file_count,cdate,mdate) values (\"%s\",\"%s\",%d,%d,%d,%d)"%(path.encode('utf-8'),name.encode('utf-8'),folder_count,file_count,last_modified,created)
 
-    #print sql
 
     walkfunc(arg,dirname,names);
-    arg.execute(sql)
-    arg.commit()
+    print "Testing [%s]" % (sql,)
+    #arg.execute(sql)
+    #arg.commit()
 
 if True:
     #os.path.walk("/media/DROBO/AudioBooks",walkfunc_folders_only,con)
