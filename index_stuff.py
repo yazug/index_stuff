@@ -44,8 +44,10 @@ extention_type_list = [
         ('.html','html'),
         ('.java','code'),
         ('.jpg','jpg'),
+        ('.JPG','jpg'),
         ('.js','js'),
         ('.mp3','mp3'),
+        ('.m4a','music'),
         ('.pdf','pdf'),
         ('.pl','code'),
         ('.png','png'),
@@ -63,6 +65,15 @@ extention_type_list = [
         ('.xls','xls'),
         ('.xml','xml'),
         ('.zip','zip'),
+        ('.o','build_object'),
+        ('.lo','build_object'),
+        ('.a','build_object'),
+        ('.la','build_object'),
+        ('.lib','library'),
+        ('Makefile','makefile'),
+        ('SConscript','makefile'),
+        ('SConstruct','makefile'),
+        ('.db','database'),
         ]
 
 def index_file(path,name,con):
