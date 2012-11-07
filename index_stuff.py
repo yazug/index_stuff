@@ -90,106 +90,121 @@ def index_file(path,name,con):
             for exten, exten_type in extention_type_list:
                 if exten in name:
                     file_type = exten_type
+                    break
 
         md5sum = md5file(filename)
 
-        sql = ("insert or replace into file_list (path,filename,md5sum,size,mdate,cdate,type) values " +
-            "(\"%s\", \"%s\", '%s', %d, %d, %d, '%s')")%(path, name, md5sum,size,last_modified,created,file_type)
+        entry = (path, name, md5sum,size,last_modified,created,file_type)
+        sql = "insert or replace into file_list (path,filename,md5sum,size,mdate,cdate,type) values (?,?,?,?,?,?,?)"
 
         try:
-            con.execute(sql)
+            con.execute(sql,entry)
             con.commit()
-        except:
-            print "Failed on the following:"
-            print (path, name, md5sum, size, last_modified, created)
-            print sql
+        except Exception as e:
+            print "Failed on the following:",e
+            print (sql, entry)
 
 def walkfunc(arg, dirname, names):
-    check_again = True
+    check_again = False
 
     #print "Walk here ",arg,dirname,names
 
-    sql_find = ("select * from file_list where path = \"%s\"")%(dirname.encode('utf-8'))
-    check_again = False
 
     dir_count = 0
     file_count = 0
 
     for name in names:
-        filename = os.path.join(dirname.encode('utf-8'),name.encode('utf-8')).encode('utf-8')
-        if os.path.isfile(filename):
-            file_count += 1
+        try:
+            filename = os.path.join(dirname.encode('utf-8'),name.encode('utf-8')).encode('utf-8')
+            if os.path.isfile(filename):
+                file_count += 1
 
-        if os.path.isdir(filename):
-            dir_count += 1
+            if os.path.isdir(filename):
+                dir_count += 1
+        except Exception as e:
+            print "Failed on the following:",e
+            print (dirname,name)
 
     print "Got %d folders and %d files"%(dir_count,file_count)
-    cursor = arg.execute('select path,folder_count,file_count from folder_list where path = \"%s\"'%(dirname.encode('utf-8'),))
-    check_again = True
-    for row in cursor:
-        print row
-        print "Folder Record [%s] has %s folders and %s files"%(row[0], row[1], row[2])
-        if row[1] is None:
-            check_again = True
-        elif row[2] is None:
-            check_again = True
-        elif row[2] != file_count and row[1] != folder_count:
-            check_again = True
-        else:
-            check_again = False
-
     try:
-        con = arg.execute(sql_find)
+        sql_find = 'select path,folder_count,file_count from folder_list where path = ?'
+        cursor = arg.execute(sql_find,(dirname.encode('utf-8'),))
 
-        db_list = con.fetchall()
-
-        name_list = []
-        for record in db_list:
-            path = record[0]
-            name = record[1]
-            filename = os.path.join(dirname.encode('utf-8'),name.encode('utf-8'))
-
-            if os.path.isfile(filename):
-                if name.encode('utf-8') not in names:
-                    check_again = True;
-                    print "File not there anymore [%s]"%name.encode('utf-8')
-
-                name_list.append(name.encode('utf-8'))
-            else:
-                print "Folder here.... [%s]"%name.encode('utf-8')
-
-
-        if len(db_list) == len(name_list):
-            pass
-        else:
+        fcount = 0
+        rows = cursor.fetchall()
+        if len(rows) == 0:
             check_again = True
+        for row in cursor:
+            path,dcount,fcount = row
+            print "Folder Record [%s] has %s folders and %s files"%(path,dcount,fcount)
+            if dcount is None:
+                check_again = True
+            elif fcount is None:
+                check_again = True
+            elif fcount != file_count and dcount != folder_count:
+                check_again = True
 
         if check_again:
-            print "Reindex needed for [%s]"%(dirname)
-            print "Got [db:%d] vs [fs:%d] records"%(len(db_list),len(name_list))
-        else:
-            print "Same Nothing to do [%s]"%(dirname.encode('utf-8'),)
+            print "Reindex needed from folder record for [%s]"%(dirname.encode('utf-8'))
+            print "Got [db:%d] vs [fs:%d] records"%(fcount,file_count)
 
     except Exception as inst:
         print "Failed on the following exception [%s]:"%(inst)
-        print sql_find
+        print (sql_find,dirname.encode('utf-8'))
+
+    if not check_again:
+        try:
+            sql_find = ("select * from file_list where path = ?")
+            con = arg.execute(sql_find, (dirname.encode('utf-8'),))
+
+            db_list = con.fetchall()
+
+            name_list = []
+            for record in db_list:
+                path = record[0]
+                name = record[1]
+                filename = os.path.join(dirname.encode('utf-8'),name.encode('utf-8'))
+
+                if os.path.isfile(filename):
+                    if name.encode('utf-8') not in names:
+                        check_again = True;
+                        print "File not there anymore [%s]"%name.encode('utf-8')
+                        break
+
+                    name_list.append(name.encode('utf-8'))
+                else:
+                    print "Folder here.... [%s]"%name.encode('utf-8')
+
+
+            if len(db_list) != len(name_list):
+                check_again = True
+
+            if check_again:
+                print "Reindex needed for [%s]"%(dirname)
+                print "Got [db:%d] vs [fs:%d] records"%(len(db_list),len(name_list))
+            else:
+                print "Same Nothing to do [%s]"%(dirname.encode('utf-8'),)
+
+        except Exception as inst:
+            print "Failed on the following exception [%s]:"%(inst)
+            print (sql_find,dirname.encode('utf-8'))
 
 
 
     if check_again:
-        sql = "delete from file_list where path = \"%s\""%dirname.encode('utf-8')
+        sql = "delete from file_list where path = ?"
         try:
-            arg.execute(sql)
+            arg.execute(sql,(dirname.encode('utf-8'),))
         except:
             print "Failed to try to cleanup [%s] with sql [%s]"%(dirname.encode('utf-8'),sql)
 
         for file in names:
             index_file(dirname.encode('utf-8'),file.encode('utf-8'),arg)
 
-        sql = "INSERT OR REPLACE INTO folder_list (path, foldername, folder_count, file_count, cdate,mdate,last_checked) values ('%s','%s',%d, %s, %s,%s,%s)"
-        params = (dirname.encode('utf-8'), os.path.basename(dirname).encode('utf-8'),dir_count,file_count,os.path.getctime(dirname),os.path.getmtime(dirname),'2012-10-15',)
-        print sql%params
-        arg.execute(sql%params)
+        sql = "INSERT OR REPLACE INTO folder_list (path, foldername, folder_count, file_count, cdate,mdate,last_checked) values (?,?,?,?,?,?,?)"
+        params = (dirname.encode('utf-8'), os.path.basename(dirname.encode('utf-8')).encode('utf-8'),dir_count,file_count,os.path.getctime(dirname.encode('utf-8')),os.path.getmtime(dirname.encode('utf-8')),'2012-11-06',)
+        #print sql%params
+        arg.execute(sql,params)
         arg.commit()
 
 
@@ -208,7 +223,7 @@ def walkfunc_folders_only(arg, dirname, names):
     sql_dir_limit = "select * from folder_list where path='%s'"%(dirname.encode('utf-8'))
     #print "Directory Limiting sql[%s]"%sql_dir_limit
     #print folder_list
-    print "Walk [%s]"%dirname
+    print "Walk [%s]"%dirname.encode('utf-8')
 
     folder_count = len(folder_list)
     file_count = len(file_list)
