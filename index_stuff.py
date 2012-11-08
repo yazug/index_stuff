@@ -206,7 +206,7 @@ def walkfunc(arg, dirname, names):
                 print "Skipping: ", (dirname,file)
 
         sql = "INSERT OR REPLACE INTO folder_list (path, foldername, folder_count, file_count, cdate,mdate,last_checked) values (?,?,?,?,?,?,?)"
-        params = (dirname.encode('utf-8'), os.path.basename(dirname.encode('utf-8')).encode('utf-8'),dir_count,file_count,os.path.getctime(dirname.encode('utf-8')),os.path.getmtime(dirname.encode('utf-8')),'2012-11-06',)
+        params = (dirname.encode('utf-8'), os.path.basename(dirname.encode('utf-8')).encode('utf-8'),dir_count,file_count,os.path.getctime(dirname.encode('utf-8')),os.path.getmtime(dirname.encode('utf-8')),str(datetime.date.today()),)
         #print sql%params
         arg.execute(sql,params)
         arg.commit()
