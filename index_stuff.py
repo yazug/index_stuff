@@ -192,7 +192,10 @@ def walkfunc(arg, dirname, names):
 
         except Exception as inst:
             print "Failed on the following exception [%s]:"%(inst)
-            print (sql_find,dirname.encode('utf-8'))
+            try:
+                print (sql_find,dirname.encode('utf-8'))
+            except Exception as inst:
+                pass
 
 
 
