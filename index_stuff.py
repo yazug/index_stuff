@@ -193,7 +193,7 @@ def walkfunc(arg, dirname, names):
         except Exception as inst:
             print "Failed on the following exception [%s]:"%(inst)
             try:
-                print (sql_find,dirname.encode('utf-8'))
+                print (sql_find,dirname)
             except Exception as inst:
                 pass
 
@@ -204,7 +204,7 @@ def walkfunc(arg, dirname, names):
         try:
             arg.execute(sql,(dirname.encode('utf-8'),))
         except:
-            print "Failed to try to cleanup [%s] with sql [%s]"%(dirname.encode('utf-8'),sql)
+            print "Failed to try to cleanup [%s] with sql [%s]"%(dirname,sql)
 
         for file in names:
             try:
